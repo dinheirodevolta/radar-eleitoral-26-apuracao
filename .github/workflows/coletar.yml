@@ -1,0 +1,40 @@
+name: Coletar apuração
+
+on:
+  workflow_dispatch:
+    inputs:
+      duracao_min:
+        description: "Duração do laço, em minutos (máximo 340)"
+        default: "330"
+  schedule:
+    # Rede de segurança: se o laço terminar ou falhar, a execução seguinte da fila recomeça.
+    # Depois que a totalização acaba, o coletor sai na hora (ver `encerrado` em dados/*.json).
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: write
+
+# Um laço por vez. A execução agendada que chega no meio de um laço fica na fila (só uma).
+concurrency:
+  group: coletar-apuracao
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Identidade dos commits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Testes
+        run: node --test
+
+      - name: Coletar
+        env:
+          DURACAO_MIN: ${{ inputs.duracao_min || '330' }}
+        run: node coletor.mjs
